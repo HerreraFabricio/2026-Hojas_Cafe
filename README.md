@@ -43,6 +43,60 @@ Los nombres y el orden de las clases utilizadas por el modelo se encuentran alma
 
 ---
 
+## Instalación
+
+Para ejecutar el proyecto en una computadora local:
+
+### 1. Descargar o clonar el repositorio
+
+Se puede descargar directamente desde GitHub o clonarlo utilizando:
+
+```bash
+git clone URL_DEL_REPOSITORIO
+```
+
+### 2. Ingresar a la carpeta del proyecto
+
+```bash
+cd deteccion-cafe
+```
+
+### 3. Instalar las dependencias
+
+Ejecutar:
+
+```bash
+pip install -r requirements.txt
+```
+
+Este comando instalará automáticamente las librerías necesarias para el funcionamiento de la aplicación.
+
+### 4. Configurar la API de Groq
+
+La aplicación necesita una API Key de Groq para generar las recomendaciones técnicas.
+
+Por seguridad, la API Key no está almacenada directamente en el código fuente.
+
+En Streamlit Community Cloud debe agregarse en la sección **Secrets** de la siguiente manera:
+
+```toml
+GROQ_API_KEY = "TU_API_KEY_DE_GROQ"
+```
+
+---
+
+## Ejecución
+
+Para iniciar la aplicación localmente, ejecutar el siguiente comando dentro de la carpeta del proyecto:
+
+```bash
+streamlit run app.py
+```
+
+Después de ejecutar el comando, Streamlit iniciará la aplicación y podrá accederse desde el navegador web.
+
+---
+
 
 ## Orientación generada con Groq
 
