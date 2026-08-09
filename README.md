@@ -96,6 +96,22 @@ streamlit run app.py
 Después de ejecutar el comando, Streamlit iniciará la aplicación y podrá accederse desde el navegador web.
 
 ---
+
+## Ejecución local
+
+Si se desea ejecutar el proyecto desde una computadora, primero se deben instalar las dependencias:
+
+```bash
+pip install -r requirements.txt
+```
+
+Luego ejecutar:
+
+```bash
+streamlit run app.py
+```
+
+---
 ## Configuración para Streamlit Community Cloud
 
 La aplicación está preparada para ser desplegada en Streamlit Community Cloud.
@@ -115,22 +131,6 @@ GROQ_API_KEY = "TU_API_KEY_DE_GROQ"
 6. Guardar la configuración y desplegar la aplicación.
 
 La API Key no se almacena directamente en el código fuente ni se publica en GitHub.
-
----
-
-## Ejecución local
-
-Si se desea ejecutar el proyecto desde una computadora, primero se deben instalar las dependencias:
-
-```bash
-pip install -r requirements.txt
-```
-
-Luego ejecutar:
-
-```bash
-streamlit run app.py
-```
 
 ---
 
