@@ -1,7 +1,6 @@
 import json
 import os
 import html
-import textwrap
 from datetime import datetime
 
 import numpy as np
@@ -26,15 +25,23 @@ st.set_page_config(
 # ---------------------------------------------------------
 # HELPER: markdown seguro para HTML indentado
 # ---------------------------------------------------------
-# Streamlit usa un parser de Markdown que interpreta cualquier
-# línea indentada con 4+ espacios como un bloque de código.
-# Como los f-strings triple-comillas dentro de bloques `with/if/else`
-# heredan la indentación de Python, el HTML terminaba mostrándose
-# como texto plano en vez de renderizarse.
-# Esta función centraliza el uso de textwrap.dedent() para evitarlo.
+# Streamlit usa un parser de Markdown (no solo HTML puro). Ese parser:
+#   1) interpreta cualquier línea indentada 4+ espacios como bloque de código, y
+#   2) corta un bloque de HTML "crudo" en cuanto encuentra una línea en blanco.
+# Como nuestros f-strings triple-comillas están anidados dentro de
+# `with/if/else` y tienen divs anidados separados por líneas en blanco,
+# textwrap.dedent() por sí solo no alcanza (solo quita la indentación común,
+# no la de cada nivel de anidamiento).
+#
+# La solución robusta es no depender para nada de la indentación:
+# aplanamos todo el HTML a una sola línea (sin saltos de línea ni
+# espacios sobrantes) antes de pasarlo a st.markdown().
 
 def render_html(contenido: str):
-    st.markdown(textwrap.dedent(contenido), unsafe_allow_html=True)
+    lineas = [linea.strip() for linea in contenido.strip("\n").split("\n")]
+    lineas_no_vacias = [linea for linea in lineas if linea]
+    html_en_una_linea = " ".join(lineas_no_vacias)
+    st.markdown(html_en_una_linea, unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------
