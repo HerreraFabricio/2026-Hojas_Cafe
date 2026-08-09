@@ -489,7 +489,7 @@ with columna_imagen:
 
         st.image(imagen, use_container_width=True)
 
-        if st.button("🚀 Analizar hoja", type="primary", use_container_width=True):
+        if st.button("Analizar hoja", type="primary", use_container_width=True):
 
             with st.spinner("Analizando imagen..."):
                 enfermedad, confianza = predecir(imagen)
