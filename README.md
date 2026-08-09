@@ -43,21 +43,6 @@ Los nombres y el orden de las clases utilizadas por el modelo se encuentran alma
 
 ---
 
-## Funcionamiento del sistema
-
-El funcionamiento general de la aplicación es el siguiente:
-
-1. El usuario ingresa al Servicio Web.
-2. Carga una fotografía de una hoja de café.
-3. La aplicación muestra la imagen seleccionada.
-4. La imagen se ajusta al tamaño requerido por el modelo.
-5. El modelo de Inteligencia Artificial analiza la fotografía.
-6. El sistema muestra la clasificación obtenida.
-7. Se muestra el porcentaje de confianza de la predicción.
-8. El resultado se envía a la API de Groq.
-9. Groq genera orientación técnica relacionada con el resultado.
-
----
 
 ## Orientación generada con Groq
 
@@ -73,71 +58,6 @@ La API Key de Groq no se almacena directamente en el código fuente.
 En Streamlit Community Cloud se configura mediante Secrets:
 
 `GROQ_API_KEY`
-
----
-
-## Arquitectura del sistema
-
-La arquitectura utilizada es:
-
-Usuario  
-↓  
-Streamlit Community Cloud  
-↓  
-Carga de imagen  
-↓  
-Modelo MobileNetV2  
-↓  
-Predicción de la hoja  
-↓  
-Porcentaje de confianza  
-↓  
-Groq API  
-↓  
-Orientación técnica  
-↓  
-Resultado mostrado al usuario
-
----
-
-## Servicios en la nube utilizados
-
-### Google Colab
-
-Se utilizó para:
-
-- Preparación del dataset.
-- Procesamiento de imágenes.
-- Entrenamiento del modelo.
-- Generación del modelo final.
-
-### GitHub
-
-Se utiliza para almacenar y administrar el código fuente y los archivos necesarios para el funcionamiento del proyecto.
-
-### Streamlit Community Cloud
-
-Se utiliza para desplegar públicamente el Servicio Web.
-
-### Groq API
-
-Se utiliza para generar la orientación técnica y recomendaciones relacionadas con la predicción realizada por el modelo.
-
----
-
-## Tecnologías utilizadas
-
-- Python
-- TensorFlow
-- MobileNetV2
-- NumPy
-- Pillow
-- Streamlit
-- Groq API
-- Google Colab
-- Git
-- GitHub
-- Streamlit Community Cloud
 
 ---
 
