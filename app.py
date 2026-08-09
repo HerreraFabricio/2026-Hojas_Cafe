@@ -57,10 +57,17 @@ render_html(
         background-color: #fbf8f3;
     }
 
+    /* Barra superior fija de Streamlit: se ocultaba visualmente pero
+       seguía ocupando espacio con position:fixed, y por eso tapaba
+       la parte de arriba del título. La sacamos del flujo por completo. */
+    [data-testid="stHeader"] {
+        display: none;
+    }
+
     /* Contenedor principal */
     .block-container {
         max-width: 1500px;
-        padding-top: 1.3rem;
+        padding-top: 2.5rem;
         padding-bottom: 2rem;
         padding-left: 2rem;
         padding-right: 2rem;
@@ -81,8 +88,9 @@ render_html(
         font-size: 39px;
         font-weight: 700;
         color: #21160f;
+        margin-top: 4px;
         margin-bottom: 8px;
-        line-height: 1.1;
+        line-height: 1.25;
     }
 
     .subtitulo-principal {
