@@ -1,6 +1,8 @@
 import json
 import os
 import html
+import textwrap
+from datetime import datetime
 
 import numpy as np
 import streamlit as st
@@ -22,10 +24,24 @@ st.set_page_config(
 
 
 # ---------------------------------------------------------
+# HELPER: markdown seguro para HTML indentado
+# ---------------------------------------------------------
+# Streamlit usa un parser de Markdown que interpreta cualquier
+# línea indentada con 4+ espacios como un bloque de código.
+# Como los f-strings triple-comillas dentro de bloques `with/if/else`
+# heredan la indentación de Python, el HTML terminaba mostrándose
+# como texto plano en vez de renderizarse.
+# Esta función centraliza el uso de textwrap.dedent() para evitarlo.
+
+def render_html(contenido: str):
+    st.markdown(textwrap.dedent(contenido), unsafe_allow_html=True)
+
+
+# ---------------------------------------------------------
 # ESTILOS
 # ---------------------------------------------------------
 
-st.markdown(
+render_html(
     """
     <style>
 
@@ -198,6 +214,7 @@ st.markdown(
         padding: 13px 16px;
         font-size: 12px;
         color: #38291f;
+        margin-bottom: 8px;
     }
 
     .historial-punto {
@@ -253,8 +270,7 @@ st.markdown(
     }
 
     </style>
-    """,
-    unsafe_allow_html=True
+    """
 )
 
 
@@ -264,12 +280,15 @@ st.markdown(
 
 @st.cache_resource
 def cargar_modelo():
-
-    modelo = tf.keras.models.load_model(
-        "mejor_modelo_cafe.keras"
-    )
-
-    return modelo
+    try:
+        return tf.keras.models.load_model("mejor_modelo_cafe.keras")
+    except Exception as error:
+        st.error(
+            "No se pudo cargar el modelo 'mejor_modelo_cafe.keras'. "
+            "Verifica que el archivo exista en el repositorio."
+        )
+        st.exception(error)
+        st.stop()
 
 
 # ---------------------------------------------------------
@@ -278,16 +297,16 @@ def cargar_modelo():
 
 @st.cache_data
 def cargar_clases():
-
-    with open(
-        "class_names.json",
-        "r",
-        encoding="utf-8"
-    ) as archivo:
-
-        clases = json.load(archivo)
-
-    return clases
+    try:
+        with open("class_names.json", "r", encoding="utf-8") as archivo:
+            return json.load(archivo)
+    except Exception as error:
+        st.error(
+            "No se pudo cargar 'class_names.json'. "
+            "Verifica que el archivo exista en el repositorio."
+        )
+        st.exception(error)
+        st.stop()
 
 
 modelo = cargar_modelo()
@@ -299,23 +318,10 @@ class_names = cargar_clases()
 # ---------------------------------------------------------
 
 def preparar_imagen(imagen):
-
     imagen = imagen.convert("RGB")
-
-    imagen = imagen.resize(
-        (224, 224)
-    )
-
-    arreglo = np.array(
-        imagen,
-        dtype=np.float32
-    )
-
-    arreglo = np.expand_dims(
-        arreglo,
-        axis=0
-    )
-
+    imagen = imagen.resize((224, 224))
+    arreglo = np.array(imagen, dtype=np.float32)
+    arreglo = np.expand_dims(arreglo, axis=0)
     return arreglo
 
 
@@ -324,26 +330,11 @@ def preparar_imagen(imagen):
 # ---------------------------------------------------------
 
 def predecir(imagen):
-
-    imagen_preparada = preparar_imagen(
-        imagen
-    )
-
-    prediccion = modelo.predict(
-        imagen_preparada,
-        verbose=0
-    )
-
-    indice = int(
-        np.argmax(prediccion[0])
-    )
-
-    confianza = float(
-        prediccion[0][indice]
-    )
-
+    imagen_preparada = preparar_imagen(imagen)
+    prediccion = modelo.predict(imagen_preparada, verbose=0)
+    indice = int(np.argmax(prediccion[0]))
+    confianza = float(prediccion[0][indice])
     enfermedad = class_names[indice]
-
     return enfermedad, confianza
 
 
@@ -352,10 +343,8 @@ def predecir(imagen):
 # ---------------------------------------------------------
 
 def obtener_groq_api_key():
-
     try:
         return st.secrets["GROQ_API_KEY"]
-
     except Exception:
         return os.getenv("GROQ_API_KEY")
 
@@ -364,19 +353,13 @@ def obtener_groq_api_key():
 # GENERAR ORIENTACION CON GROQ
 # ---------------------------------------------------------
 
-def generar_orientacion(
-    enfermedad,
-    confianza
-):
-
+def generar_orientacion(enfermedad, confianza):
     api_key = obtener_groq_api_key()
 
     if not api_key:
         return None
 
-    cliente = Groq(
-        api_key=api_key
-    )
+    cliente = Groq(api_key=api_key)
 
     prompt = f"""
 Actúa como asistente técnico especializado en cultivo de café.
@@ -431,17 +414,9 @@ Reglas:
     contenido = respuesta.choices[0].message.content.strip()
 
     # Por si Groq coloca ```json
-    contenido = contenido.replace(
-        "```json",
-        ""
-    ).replace(
-        "```",
-        ""
-    ).strip()
+    contenido = contenido.replace("```json", "").replace("```", "").strip()
 
-    datos = json.loads(
-        contenido
-    )
+    datos = json.loads(contenido)
 
     return datos
 
@@ -453,15 +428,15 @@ Reglas:
 if "resultado" not in st.session_state:
     st.session_state.resultado = None
 
+if "historial" not in st.session_state:
+    st.session_state.historial = []  # lista de resultados pasados
+
 
 # ---------------------------------------------------------
 # COLUMNAS PRINCIPALES
 # ---------------------------------------------------------
 
-columna_imagen, columna_diagnostico = st.columns(
-    [1.02, 1],
-    gap="large"
-)
+columna_imagen, columna_diagnostico = st.columns([1.02, 1], gap="large")
 
 
 # ---------------------------------------------------------
@@ -470,85 +445,63 @@ columna_imagen, columna_diagnostico = st.columns(
 
 with columna_imagen:
 
-    st.markdown(
-        '<div class="titulo-principal">'
-        'Captura de Imagen Foliar'
-        '</div>',
-        unsafe_allow_html=True
+    render_html(
+        """
+        <div class="titulo-principal">
+            Captura de Imagen Foliar
+        </div>
+        """
     )
 
-    st.markdown(
+    render_html(
         """
         <div class="subtitulo-principal">
             Posicione o cargue una hoja de café con buena iluminación.
             El sistema analizará signos visibles mediante inteligencia
             artificial.
         </div>
-        """,
-        unsafe_allow_html=True
+        """
     )
 
     archivo = st.file_uploader(
         "📁 Subir archivo",
-        type=[
-            "jpg",
-            "jpeg",
-            "png"
-        ]
+        type=["jpg", "jpeg", "png"]
     )
 
     if archivo is not None:
 
-        imagen = Image.open(
-            archivo
-        )
+        imagen = Image.open(archivo)
 
-        st.image(
-            imagen,
-            use_container_width=True
-        )
+        st.image(imagen, use_container_width=True)
 
-        if st.button(
-            "🚀 Analizar hoja",
-            type="primary",
-            use_container_width=True
-        ):
+        if st.button("🚀 Analizar hoja", type="primary", use_container_width=True):
 
-            with st.spinner(
-                "Analizando imagen..."
-            ):
-
-                enfermedad, confianza = predecir(
-                    imagen
-                )
-
+            with st.spinner("Analizando imagen..."):
+                enfermedad, confianza = predecir(imagen)
                 porcentaje = confianza * 100
 
+            orientacion = None
+            error_groq = None
+
             try:
-
-                with st.spinner(
-                    "Generando orientación técnica..."
-                ):
-
-                    orientacion = generar_orientacion(
-                        enfermedad,
-                        porcentaje
-                    )
-
+                with st.spinner("Generando orientación técnica..."):
+                    orientacion = generar_orientacion(enfermedad, porcentaje)
             except Exception as error:
+                error_groq = str(error)
 
-                orientacion = None
-
-                print(
-                    "Error de Groq:",
-                    error
-                )
-
-            st.session_state.resultado = {
+            resultado_actual = {
                 "enfermedad": enfermedad,
                 "porcentaje": porcentaje,
-                "orientacion": orientacion
+                "orientacion": orientacion,
+                "error_groq": error_groq,
+                "hora": datetime.now().strftime("%H:%M:%S"),
             }
+
+            st.session_state.resultado = resultado_actual
+
+            # Guardamos hasta los últimos 5 resultados como historial real
+            st.session_state.historial.insert(0, resultado_actual)
+            st.session_state.historial = st.session_state.historial[:5]
 
 
 # ---------------------------------------------------------
@@ -557,78 +510,71 @@ with columna_imagen:
 
 with columna_diagnostico:
 
-    st.markdown(
-        '<div class="mini-label">'
-        'ÚLTIMO DIAGNÓSTICO'
-        '</div>',
-        unsafe_allow_html=True
+    render_html(
+        """
+        <div class="mini-label">
+            ÚLTIMO DIAGNÓSTICO
+        </div>
+        """
     )
 
     resultado = st.session_state.resultado
 
     if resultado is None:
 
-        st.markdown(
-            '<div class="resultado-nombre">'
-            'Esperando análisis'
-            '</div>',
-            unsafe_allow_html=True
+        render_html(
+            """
+            <div class="resultado-nombre">
+                Esperando análisis
+            </div>
+            """
         )
 
-        st.markdown(
-            '<div class="descripcion-modelo">'
-            'Cargue una fotografía y presione Analizar hoja.'
-            '</div>',
-            unsafe_allow_html=True
+        render_html(
+            """
+            <div class="descripcion-modelo">
+                Cargue una fotografía y presione Analizar hoja.
+            </div>
+            """
         )
 
-        st.markdown(
+        render_html(
             """
             <div class="aviso">
                 🌿 El sistema puede clasificar hojas como
                 <strong>Minador, Phoma, Roya o Saludable</strong>.
             </div>
-            """,
-            unsafe_allow_html=True
+            """
         )
 
     else:
 
-        enfermedad = html.escape(
-            resultado["enfermedad"]
-        )
-
+        enfermedad = html.escape(resultado["enfermedad"])
         porcentaje = resultado["porcentaje"]
-
         orientacion = resultado["orientacion"]
+        error_groq = resultado.get("error_groq")
 
-        col_resultado, col_confianza = st.columns(
-            [3, 1]
-        )
+        col_resultado, col_confianza = st.columns([3, 1])
 
         with col_resultado:
-
-            st.markdown(
+            render_html(
                 f"""
                 <div class="resultado-nombre">
                     {enfermedad}
                 </div>
-                """,
-                unsafe_allow_html=True
+                """
             )
 
-            st.markdown(
+            render_html(
                 """
                 <div class="descripcion-modelo">
                     Resultado obtenido mediante el modelo MobileNetV2
                 </div>
-                """,
-                unsafe_allow_html=True
+                """
             )
 
         with col_confianza:
-
-            st.markdown(
+            render_html(
                 f"""
                 <div class="confianza-numero">
                     {porcentaje:.1f}%
@@ -637,196 +583,133 @@ with columna_diagnostico:
                 <div class="confianza-label">
                     CONFIANZA IA
                 </div>
-                """,
-                unsafe_allow_html=True
+                """
             )
 
         # -------------------------------------------------
         # ORIENTACION
         # -------------------------------------------------
 
-        st.markdown(
-            """
-            <div class="tarjeta-orientacion">
-
-                <div class="orientacion-header">
-                    ⚠ ORIENTACIÓN Y MANEJO PREVENTIVO
-                </div>
-
-                <div class="orientacion-intro">
-                    Orientación generada automáticamente según
-                    el resultado del modelo.
-                </div>
-            """,
-            unsafe_allow_html=True
-        )
-
         if orientacion:
 
             descripcion = html.escape(
-                orientacion.get(
-                    "descripcion",
-                    "Sin información disponible."
-                )
+                orientacion.get("descripcion", "Sin información disponible.")
             )
-
             manejo = html.escape(
-                orientacion.get(
-                    "manejo",
-                    "Sin información disponible."
-                )
+                orientacion.get("manejo", "Sin información disponible.")
             )
-
             buenas_practicas = html.escape(
-                orientacion.get(
-                    "buenas_practicas",
-                    "Sin información disponible."
-                )
+                orientacion.get("buenas_practicas", "Sin información disponible.")
             )
-
             seguimiento = html.escape(
-                orientacion.get(
-                    "seguimiento",
-                    "Sin información disponible."
-                )
+                orientacion.get("seguimiento", "Sin información disponible.")
             )
 
-            st.markdown(
+            render_html(
                 f"""
-                <div class="recomendacion-item">
+                <div class="tarjeta-orientacion">
 
-                    <span class="numero">01</span>
+                    <div class="orientacion-header">
+                        ⚠ ORIENTACIÓN Y MANEJO PREVENTIVO
+                    </div>
 
-                    <div class="recomendacion-contenido">
+                    <div class="orientacion-intro">
+                        Orientación generada automáticamente según
+                        el resultado del modelo.
+                    </div>
 
-                        <div class="recomendacion-titulo">
-                            Descripción del resultado
+                    <div class="recomendacion-item">
+                        <span class="numero">01</span>
+                        <div class="recomendacion-contenido">
+                            <div class="recomendacion-titulo">
+                                Descripción del resultado
+                            </div>
+                            <div class="recomendacion-texto">
+                                {descripcion}
+                            </div>
                         </div>
+                    </div>
 
-                        <div class="recomendacion-texto">
-                            {descripcion}
+                    <div class="recomendacion-item">
+                        <span class="numero">02</span>
+                        <div class="recomendacion-contenido">
+                            <div class="recomendacion-titulo">
+                                Manejo preventivo
+                            </div>
+                            <div class="recomendacion-texto">
+                                {manejo}
+                            </div>
                         </div>
+                    </div>
 
+                    <div class="recomendacion-item">
+                        <span class="numero">03</span>
+                        <div class="recomendacion-contenido">
+                            <div class="recomendacion-titulo">
+                                Buenas prácticas
+                            </div>
+                            <div class="recomendacion-texto">
+                                {buenas_practicas}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="recomendacion-item">
+                        <span class="numero">04</span>
+                        <div class="recomendacion-contenido">
+                            <div class="recomendacion-titulo">
+                                Monitoreo y seguimiento
+                            </div>
+                            <div class="recomendacion-texto">
+                                {seguimiento}
+                            </div>
+                        </div>
                     </div>
 
                 </div>
-
-
-                <div class="recomendacion-item">
-
-                    <span class="numero">02</span>
-
-                    <div class="recomendacion-contenido">
-
-                        <div class="recomendacion-titulo">
-                            Manejo preventivo
-                        </div>
-
-                        <div class="recomendacion-texto">
-                            {manejo}
-                        </div>
-
-                    </div>
-
-                </div>
-
-
-                <div class="recomendacion-item">
-
-                    <span class="numero">03</span>
-
-                    <div class="recomendacion-contenido">
-
-                        <div class="recomendacion-titulo">
-                            Buenas prácticas
-                        </div>
-
-                        <div class="recomendacion-texto">
-                            {buenas_practicas}
-                        </div>
-
-                    </div>
-
-                </div>
-
-
-                <div class="recomendacion-item">
-
-                    <span class="numero">04</span>
-
-                    <div class="recomendacion-contenido">
-
-                        <div class="recomendacion-titulo">
-                            Monitoreo y seguimiento
-                        </div>
-
-                        <div class="recomendacion-texto">
-                            {seguimiento}
-                        </div>
-
-                    </div>
-
-                </div>
-                """,
-                unsafe_allow_html=True
+                """
             )
 
         else:
+            mensaje = "No fue posible generar las recomendaciones con Groq."
+            if error_groq:
+                mensaje += f" Detalle técnico: {error_groq}"
+            st.warning(mensaje)
 
-            st.warning(
-                "No fue posible generar las recomendaciones "
-                "con Groq."
+        # -------------------------------------------------
+        # HISTORIAL (real, no solo el último resultado)
+        # -------------------------------------------------
+
+        render_html(
+            """
+            <div class="historial-titulo">
+                HISTORIAL RECIENTE
+            </div>
+            """
+        )
+
+        for item in st.session_state.historial:
+            nombre_item = html.escape(item["enfermedad"])
+            render_html(
+                f"""
+                <div class="historial-box">
+                    <span class="historial-punto">●</span>
+                    <strong>{nombre_item}</strong>
+                    <span style="float:right; color:#8a8178;">
+                        {item['porcentaje']:.1f}% · {item['hora']}
+                    </span>
+                </div>
+                """
             )
 
-        st.markdown(
-            "</div>",
-            unsafe_allow_html=True
-        )
-
-        # -------------------------------------------------
-        # HISTORIAL
-        # -------------------------------------------------
-
-        st.markdown(
-            '<div class="historial-titulo">'
-            'HISTORIAL RECIENTE'
-            '</div>',
-            unsafe_allow_html=True
-        )
-
-        st.markdown(
-            f"""
-            <div class="historial-box">
-
-                <span class="historial-punto">
-                    ●
-                </span>
-
-                <strong>
-                    {enfermedad}
-                </strong>
-
-                <span style="
-                    float:right;
-                    color:#8a8178;
-                ">
-                    {porcentaje:.1f}% confianza
-                </span>
-
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
-        st.markdown(
+        render_html(
             """
             <div class="aviso">
                 ⚠ La clasificación es una predicción realizada
                 mediante inteligencia artificial y no sustituye
                 la evaluación de un técnico agrícola.
             </div>
-            """,
-            unsafe_allow_html=True
+            """
         )
 
 
@@ -834,12 +717,11 @@ with columna_diagnostico:
 # FOOTER
 # ---------------------------------------------------------
 
-st.markdown(
+render_html(
     """
     <div class="footer-personalizado">
         © 2026 · DETECCIÓN DE ENFERMEDADES EN CAFÉ ·
         MOBILE NETV2 + GROQ API
     </div>
-    """,
-    unsafe_allow_html=True
+    """
 )
